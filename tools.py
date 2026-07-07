@@ -81,9 +81,21 @@ search_tool = DuckDuckGoSearchRun()
 @tool
 def search_pdf(question: str) -> str:
     """
-    Search the uploaded PDF and return the most relevant information.
-    Use this tool whenever the user asks questions about the uploaded document.
-    """
+Search ONLY the uploaded PDF.
+
+Use this tool whenever the user asks about:
+
+- uploaded document
+- names
+- dates
+- confidential information
+- project details
+- summaries
+
+Never answer these questions from your own knowledge.
+
+Return the most relevant information from the uploaded PDF.
+"""
 
     context = get_context(question)
 

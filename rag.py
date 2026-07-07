@@ -3,7 +3,6 @@ import os
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
-
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 
@@ -12,11 +11,8 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 # ==========================================
 
 UPLOAD_FOLDER = "uploads"
-
 VECTOR_DB_FOLDER = "vectorstore"
 
-
-# Create folders if they don't exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(VECTOR_DB_FOLDER, exist_ok=True)
 
@@ -30,17 +26,21 @@ embeddings = HuggingFaceEmbeddings(
 )
 
 
+# Cache the vector store in memory
+VECTORSTORE = None
+
+
 # ==========================================
 # 📚 Build Vector Database
 # ==========================================
 
 def create_vector_database(pdf_path: str):
 
-    # Load PDF
+    global VECTORSTORE
+
     loader = PyPDFLoader(pdf_path)
     documents = loader.load()
 
-    # Split into chunks
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=1000,
         chunk_overlap=200
@@ -48,16 +48,14 @@ def create_vector_database(pdf_path: str):
 
     chunks = splitter.split_documents(documents)
 
-    # Create FAISS vector store
-    vectorstore = FAISS.from_documents(
+    VECTORSTORE = FAISS.from_documents(
         chunks,
         embeddings
     )
 
-    # Save locally
-    vectorstore.save_local(VECTOR_DB_FOLDER)
+    VECTORSTORE.save_local(VECTOR_DB_FOLDER)
 
-    return vectorstore
+    return VECTORSTORE
 
 
 # ==========================================
@@ -80,31 +78,28 @@ def load_vector_database():
         return vectorstore
 
     except Exception:
-
         return None
 
 
 # ==========================================
-# 🔍 Search Similar Chunks
+# 🔍 Retrieve Similar Chunks
 # ==========================================
 
 def retrieve_documents(query: str, k: int = 4):
 
-    vectorstore = load_vector_database()
+    global VECTORSTORE
 
-    if vectorstore is None:
+    if VECTORSTORE is None:
+        VECTORSTORE = load_vector_database()
+
+    if VECTORSTORE is None:
         return []
 
-    docs = vectorstore.similarity_search(
-        query,
-        k=k
-    )
-
-    return docs
+    return VECTORSTORE.similarity_search(query, k=k)
 
 
 # ==========================================
-# 📝 Build Context for LLM
+# 📝 Build Context
 # ==========================================
 
 def get_context(query: str):
@@ -112,11 +107,14 @@ def get_context(query: str):
     docs = retrieve_documents(query)
 
     if len(docs) == 0:
+        print("\n❌ No relevant documents found.\n")
         return ""
 
     context = "\n\n".join(
         doc.page_content
         for doc in docs
     )
+
+   
 
     return context

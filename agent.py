@@ -21,11 +21,23 @@ def create_bestie_agent(llm):
     ]
 
     template = """
-You are Bestie Bot, a cheerful AI assistant.
+You are Bestie Bot, a friendly AI assistant.
 
 You have access to the following tools:
 
 {tools}
+
+Available tools:
+{tool_names}
+
+Tool Usage Rules:
+
+- Use search_pdf for questions about the uploaded PDF.
+- Use current_time for date and time.
+- Use calculator for mathematical calculations.
+- Use tell_joke only when the user asks for a joke.
+- Use search_tool for current or internet information.
+- Otherwise answer directly.
 
 Use the following format:
 
@@ -39,7 +51,7 @@ Action Input: the input to the tool
 
 Observation: the result of the tool
 
-...(repeat Thought/Action/Observation if needed)...
+...(repeat if needed)...
 
 Thought: I now know the final answer
 
@@ -49,7 +61,6 @@ Question: {input}
 
 {agent_scratchpad}
 """
-
     prompt = PromptTemplate.from_template(template)
 
     agent = create_react_agent(
@@ -63,6 +74,8 @@ Question: {input}
         tools=tools,
         verbose=True,
         handle_parsing_errors=True,
+        max_iterations=3,
+        early_stopping_method="generate",
     )
 
     return agent_executor

@@ -2,6 +2,7 @@ import os
 import streamlit as st
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 from agent import create_bestie_agent
 from rag import create_vector_database
@@ -13,21 +14,6 @@ from rag import create_vector_database
 load_dotenv()
 
 # ==========================================================
-# 🎀 Create LLM
-# ==========================================================
-
-llm = ChatGroq(
-    model="llama-3.3-70b-versatile",
-    temperature=0.7
-)
-
-# ==========================================================
-# 🎀 Create Agent
-# ==========================================================
-
-agent = create_bestie_agent(llm)
-
-# ==========================================================
 # 🎀 Streamlit Config
 # ==========================================================
 
@@ -36,6 +22,49 @@ st.set_page_config(
     page_icon="🎀",
     layout="wide"
 )
+
+# ==========================================================
+# 🎀 Create LLM
+# ==========================================================
+
+MODEL_NAME = ""
+
+if os.getenv("GOOGLE_API_KEY"):
+
+    MODEL_NAME = "Gemini 2.5 Flash"
+
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-2.5-flash",
+        google_api_key=os.getenv("GOOGLE_API_KEY"),
+        temperature=0.7,
+    )
+
+elif os.getenv("GROQ_API_KEY"):
+
+    MODEL_NAME = "Llama 3.3 70B (Groq)"
+
+    llm = ChatGroq(
+        model="llama-3.3-70b-versatile",
+        temperature=0.7,
+        groq_api_key=os.getenv("GROQ_API_KEY"),
+    )
+
+else:
+
+    st.error(
+        "❌ No API key found.\n\nPlease add either GOOGLE_API_KEY or GROQ_API_KEY to your .env file."
+    )
+    st.stop()
+
+# ==========================================================
+# 🎀 Create Agent
+# ==========================================================
+
+agent = create_bestie_agent(llm)
+
+# ==========================================================
+# 🎀 Main UI
+# ==========================================================
 
 st.title("🎀 Bestie Bot")
 st.caption("Your Personal AI Assistant 💖")
@@ -52,6 +81,8 @@ os.makedirs("uploads", exist_ok=True)
 
 st.sidebar.title("📂 Upload PDF")
 
+st.sidebar.success(f"🤖 Using: {MODEL_NAME}")
+
 uploaded_file = st.sidebar.file_uploader(
     "Choose a PDF",
     type=["pdf"]
@@ -67,7 +98,7 @@ if uploaded_file is not None:
     with open(pdf_path, "wb") as f:
         f.write(uploaded_file.getbuffer())
 
-    with st.sidebar.spinner("Creating Vector Database..."):
+    with st.sidebar.spinner("📚 Creating Vector Database..."):
 
         create_vector_database(pdf_path)
 
@@ -99,10 +130,6 @@ user_input = st.chat_input(
 
 if user_input:
 
-    # --------------------------
-    # Show User Message
-    # --------------------------
-
     st.session_state.messages.append(
         {
             "role": "user",
@@ -112,10 +139,6 @@ if user_input:
 
     with st.chat_message("user"):
         st.markdown(user_input)
-
-    # --------------------------
-    # AI Response
-    # --------------------------
 
     with st.chat_message("assistant"):
 
@@ -133,13 +156,24 @@ if user_input:
 
             except Exception as e:
 
-                answer = f"❌ Error:\n\n{str(e)}"
+                error = str(e)
+
+                if "429" in error:
+
+                    answer = (
+                        "⚠️ **Rate limit reached.**\n\n"
+                        "The AI provider has temporarily limited requests on the free tier.\n\n"
+                        "Please wait a few seconds and try again."
+                    )
+
+                else:
+
+                    answer = (
+                        "❌ **Something went wrong.**\n\n"
+                        f"```\n{error}\n```"
+                    )
 
             st.markdown(answer)
-
-    # --------------------------
-    # Save AI Response
-    # --------------------------
 
     st.session_state.messages.append(
         {
