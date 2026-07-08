@@ -1,32 +1,20 @@
 import os
-import sys
+
 from dotenv import load_dotenv
 
-# Reconfigure stdout to support printing emojis in Windows command prompt
-if sys.platform.startswith("win"):
-    sys.stdout.reconfigure(encoding="utf-8")
-
 from langchain_groq import ChatGroq
-from langchain_google_genai import ChatGoogleGenerativeAI
 
 from agent import create_bestie_agent
 from memory import chat_history
 
 load_dotenv()
+from langchain_google_genai import ChatGoogleGenerativeAI
 
-if os.environ.get("GROQ_API_KEY"):
-    llm = ChatGroq(
-        model="llama-3.1-8b-instant",
-        temperature=0,
-    )
-elif os.environ.get("GEMINI_API_KEY"):
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash",
-        google_api_key=os.environ.get("GEMINI_API_KEY"),
-        temperature=0,
-    )
-else:
-    raise ValueError("Neither GROQ_API_KEY nor GEMINI_API_KEY is set in the environment.")
+llm = ChatGoogleGenerativeAI(
+    model="gemini-2.5-flash",
+    google_api_key=os.getenv("GOOGLE_API_KEY"),
+    temperature=0.3,
+)
 
 agent = create_bestie_agent(llm)
 
