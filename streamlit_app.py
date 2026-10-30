@@ -29,30 +29,45 @@ st.set_page_config(
 
 MODEL_NAME = ""
 
-if os.getenv("GOOGLE_API_KEY"):
+# Look in .env first, then fall back to Streamlit Secrets (for Streamlit Cloud deployment)
+google_api_key = os.getenv("GOOGLE_API_KEY")
+try:
+    if not google_api_key and "GOOGLE_API_KEY" in st.secrets:
+        google_api_key = st.secrets["GOOGLE_API_KEY"]
+except Exception:
+    pass
+
+groq_api_key = os.getenv("GROQ_API_KEY")
+try:
+    if not groq_api_key and "GROQ_API_KEY" in st.secrets:
+        groq_api_key = st.secrets["GROQ_API_KEY"]
+except Exception:
+    pass
+
+if google_api_key:
 
     MODEL_NAME = "Gemini 2.5 Flash"
 
     llm = ChatGoogleGenerativeAI(
         model="gemini-2.5-flash",
-        google_api_key=os.getenv("GOOGLE_API_KEY"),
+        google_api_key=google_api_key,
         temperature=0.7,
     )
 
-elif os.getenv("GROQ_API_KEY"):
+elif groq_api_key:
 
     MODEL_NAME = "Llama 3.3 70B (Groq)"
 
     llm = ChatGroq(
         model="llama-3.3-70b-versatile",
         temperature=0.7,
-        groq_api_key=os.getenv("GROQ_API_KEY"),
+        groq_api_key=groq_api_key,
     )
 
 else:
 
     st.error(
-        "❌ No API key found.\n\nPlease add either GOOGLE_API_KEY or GROQ_API_KEY to your .env file."
+        "❌ No API key found.\n\nPlease add either GOOGLE_API_KEY or GROQ_API_KEY to your .env file or Streamlit Cloud Secrets."
     )
     st.stop()
 
